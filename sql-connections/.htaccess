@@ -1,0 +1,8 @@
+# 禁止浏览器直接访问本目录（db-creds.inc 只应由 PHP include 读取）
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+</IfModule>

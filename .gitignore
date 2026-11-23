@@ -1,0 +1,33 @@
+# ===== 本地开发/截图工具产物 =====
+.shots/
+.workbuddy-ai/
+.vscode/
+.idea/
+
+# ===== 网页另存副本、误创建的空文件 =====
+index-1.html
+index-2.html
+index-3.html
+index-1.html_files/
+index-2.html_files/
+index-3.html_files/
+/0
+/1
+/2
+
+# ===== 构建产物（源码可直接部署，需要时用 tools/pack.php 重新生成） =====
+package/
+*.zip
+
+# ===== 课件（本地教学资料，不随仓库发布） =====
+课件/
+
+# ===== 运行时数据：闯关进度、挑战关随机密钥 =====
+app/data/progress.json
+app/data/challenge_series.json
+
+# ===== 系统文件 =====
+Thumbs.db
+.DS_Store
+desktop.ini
+*~
